@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from models.user import get_all_user, get_user_by_id, user_register, user_login
+from utils.jwt_utils import encode_jwt
 
 user_bp = Blueprint('user', __name__)
 
@@ -23,9 +24,13 @@ def login():
     password = data.get('password')
     if not username or not password:
         return jsonify({'Error' : 'Username or password is empty'}), 400
-    if user_login(username, password):
-        return jsonify({'username' : username,
-                        'password' : password,
+    user = user_login(username, password)
+    if user:
+        print(user)
+        token = encode_jwt(user["id"])
+        return jsonify({
+                        'user_id' : user['id'],
+                        'token' : token,
                         'message' : 'User berhasil login'}), 200
     else:
         return jsonify({'message' : 'User tidak ditemukan'})
@@ -44,6 +49,6 @@ def register():
     else:
         return jsonify({'message' : 'username already exists'}), 400
 
-@user_bp.route("/logout", methods=['GET'])
+@user_bp.route("/logout", methods=['POST'])
 def logout():
     return jsonify({"message" : "Route logout"})

@@ -1,4 +1,6 @@
 from database.db import connect_db
+import bcrypt
+import pymysql
 
 def get_all_user():
     conn = connect_db()
@@ -26,8 +28,9 @@ def user_register(username, password):
     conn = connect_db()
     try:
         with conn.cursor() as cursor:
+            hashedpw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
             sql = "INSERT INTO users (username, password) VALUES (%s, %s)"
-            cursor.execute(sql,(username, password))
+            cursor.execute(sql,(username, hashedpw.decode('utf-8')))
             conn.commit()
             return True
     finally:
@@ -37,12 +40,16 @@ def user_login(username, password):
     conn = connect_db()
     try:
         with conn.cursor() as cursor:
-            sql = "SELECT * FROM users WHERE username = %s AND password = %s"
-            cursor.execute(sql, (username, password))
+            sql = "SELECT * FROM users WHERE username = %s"
+            cursor.execute(sql, (username,))
             user = cursor.fetchone()
-            if user:
-                return True
+            if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
+                return user
             else:
                 return False
+            
+    except pymysql.MySQLError as e:
+        print(f"Database error: {e}")
+        return False
     finally:
         conn.close()
